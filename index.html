@@ -1776,7 +1776,19 @@
 
         function cleanTime(t) {
             if (!t || t === "—") return "";
-            const str = String(t);
+            const str = String(t).trim();
+            if (/^\d{1,2}:\d{2}$/.test(str)) {
+                const p = str.split(":");
+                return p[0].padStart(2, "0") + ":" + p[1];
+            }
+            if (str.includes("T")) {
+                const dt = new Date(str);
+                if (!isNaN(dt.getTime())) {
+                    const h = String(dt.getHours()).padStart(2, "0");
+                    const m = String(dt.getMinutes()).padStart(2, "0");
+                    return h + ":" + m;
+                }
+            }
             const m = str.match(/(\d{1,2}):(\d{2})/);
             if (m) return m[1].padStart(2, "0") + ":" + m[2];
             return str;
@@ -1785,8 +1797,17 @@
         function cleanDate(d) {
             if (!d) return "";
             let str = String(d).trim();
-            if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
-                return str.substring(0, 10);
+            if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+                return str;
+            }
+            if (str.includes("T")) {
+                const dt = new Date(str);
+                if (!isNaN(dt.getTime())) {
+                    const y = dt.getFullYear();
+                    const m = String(dt.getMonth() + 1).padStart(2, "0");
+                    const date = String(dt.getDate()).padStart(2, "0");
+                    return `${y}-${m}-${date}`;
+                }
             }
             if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(str)) {
                 const p = str.split("/");
@@ -1805,15 +1826,53 @@
 
         function normalizeRecord(r) {
             if (!r) return null;
+            const date = cleanDate(r.date);
+            const day1On = cleanTime(r.day1On);
+            const day1Off = cleanTime(r.day1Off);
+            const day2Date = cleanDate(r.day2Date);
+            const day2On = cleanTime(r.day2On);
+            const day2Off = cleanTime(r.day2Off);
+            const isLeave = r.isLeave === true || r.isLeave === "true" ||
+                String(r.turn || "").toLowerCase().includes("leave") ||
+                String(r.leaveType || "").toLowerCase().includes("leave");
+
+            const day1Minutes = duration(day1On, day1Off);
+            const day2Minutes = duration(day2On, day2Off);
+            let totalMinutes = Number(r.totalMinutes) || 0;
+
+            if (!isLeave && totalMinutes === 0) {
+                if (r.type === "multiple" && day1On && day2Off) {
+                    let st = toMinutes(day1On);
+                    let ed = toMinutes(day2Off) + 1440;
+                    totalMinutes = ed - st;
+                } else if (day1Minutes > 0) {
+                    totalMinutes = day1Minutes;
+                }
+            }
+
+            const complete = isLeave ? true : (r.type === "multiple" ? (!!day1On && !!day2Off) : (!!day1On && !!day1Off));
+
             return {
                 ...r,
-                date: cleanDate(r.date),
-                day1On: cleanTime(r.day1On),
-                day1Off: cleanTime(r.day1Off),
-                day2Date: cleanDate(r.day2Date),
-                day2On: cleanTime(r.day2On),
-                day2Off: cleanTime(r.day2Off),
-                totalMinutes: Number(r.totalMinutes) || 0
+                id: r.id || (Date.now() + Math.floor(Math.random() * 1000)),
+                isLeave: isLeave,
+                leaveType: r.leaveType || (isLeave ? (r.turn || "Casual Leave") : ""),
+                leaveRemarks: r.leaveRemarks || (isLeave ? (r.turnInfo || "") : ""),
+                date: date,
+                driver: r.driver || "W.A.M. S.P. Herath",
+                employeeNo: String(r.employeeNo || "36835"),
+                turn: String(r.turn || ""),
+                turnInfo: String(r.turnInfo || ""),
+                type: r.type || (day2Date || day2On || day2Off ? "multiple" : "single"),
+                day1On: day1On,
+                day1Off: day1Off,
+                day1Minutes: day1Minutes,
+                day2Date: day2Date,
+                day2On: day2On,
+                day2Off: day2Off,
+                day2Minutes: day2Minutes,
+                totalMinutes: totalMinutes,
+                complete: r.complete !== undefined ? !!r.complete : complete
             };
         }
 
@@ -4307,6 +4366,7 @@
         ===================================================== */
 
         monthChanged();
+        fetchRecordsFromSheet();
 
     </script>
 
