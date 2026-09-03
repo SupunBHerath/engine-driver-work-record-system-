@@ -1079,7 +1079,7 @@
                         🚆 SLR Driver
                     </div>
                     <button type="button" class="refresh-badge" title="Refresh Data from Google Sheet"
-                        onclick="fetchRecordsFromSheet()">
+                        onclick="fetchRecordsFromSheet(true)">
                         🔄 Refresh
                     </button>
                     <button type="button" class="lock-btn" title="Lock App" onclick="lockApp()">
@@ -1746,9 +1746,11 @@
             };
         }
 
-        function fetchRecordsFromSheet() {
+        function fetchRecordsFromSheet(isManual = false) {
 
-            showToast("Loading records from Google Sheet...", "info", 1800);
+            if (isManual) {
+                showToast("Refreshing records from Google Sheet...", "info", 1500);
+            }
 
             const callbackName = "onGoogleSheetDataLoaded_" + Date.now();
 
@@ -1764,7 +1766,9 @@
                     records = recordList.map(normalizeRecord).filter(Boolean);
                     displayRecords();
                     updateDashboard();
-                    showToast(`Loaded ${records.length} records from Google Sheet.`, "success");
+                    if (isManual) {
+                        showToast(`Refreshed ${records.length} records.`, "success");
+                    }
                 }
             };
 
@@ -1784,7 +1788,9 @@
                             records = list.map(normalizeRecord).filter(Boolean);
                             displayRecords();
                             updateDashboard();
-                            showToast(`Loaded ${records.length} records from Google Sheet.`, "success");
+                            if (isManual) {
+                                showToast(`Refreshed ${records.length} records.`, "success");
+                            }
                         }
                     })
                     .catch(e => {
@@ -4148,7 +4154,6 @@
         ===================================================== */
 
         monthChanged();
-        fetchRecordsFromSheet();
 
     </script>
 
