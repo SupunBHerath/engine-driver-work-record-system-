@@ -1,0 +1,4098 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Sri Lanka Railways - Engine Driver Working & Leave Record Mobile App">
+
+    <title>SLR Engine Driver - Duty & Leave Tracker</title>
+
+    <!-- Google Font: Plus Jakarta Sans for Premium Modern Mobile Look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- SheetJS for Excel (.xlsx / .csv) integration -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-gradient: linear-gradient(135deg, #2563eb, #1d4ed8);
+            --primary-light: #eff6ff;
+            --bg-main: #f8fafc;
+            --surface: #ffffff;
+            --border-light: #edf2f7;
+            --border-input: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --text-sub: #94a3b8;
+
+            --success: #10b981;
+            --success-bg: #f0fdf4;
+            --success-text: #15803d;
+
+            --warning: #f59e0b;
+            --warning-bg: #fffbeb;
+            --warning-text: #b45309;
+
+            --danger: #ef4444;
+            --danger-bg: #fef2f2;
+            --danger-text: #b91c1c;
+
+            --purple: #8b5cf6;
+            --purple-bg: #faf5ff;
+            --purple-text: #7e22ce;
+
+            --excel: #107c41;
+            --excel-gradient: linear-gradient(135deg, #107c41, #0b5e30);
+
+            --radius-sm: 10px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-full: 9999px;
+
+            --shadow-soft: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+            --shadow-hover: 0 8px 26px -4px rgba(15, 23, 42, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        html, body {
+            -webkit-text-size-adjust: 100%;
+            touch-action: pan-x pan-y;
+            overflow-x: hidden;
+        }
+
+        input,
+        select,
+        textarea {
+            user-select: text;
+            -webkit-user-select: text;
+            font-size: 16px !important; /* Prevents iOS Safari & mobile Chrome auto-zoom on input focus */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0b1120;
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        /* MOBILE APP SHELL */
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            background: var(--bg-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.4);
+            padding-bottom: 90px;
+        }
+
+        /* =====================================================
+   PIN LOGIN LOCK SCREEN
+===================================================== */
+        .pin-lock-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(160deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            color: white;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 20px;
+        }
+
+        .pin-lock-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: var(--radius-full);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            overflow: hidden;
+            margin-bottom: 14px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .pin-lock-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .pin-dots {
+            display: flex;
+            gap: 14px;
+            margin: 20px 0 28px;
+        }
+
+        .pin-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1.5px solid rgba(255, 255, 255, 0.4);
+            transition: all 0.15s ease;
+        }
+
+        .pin-dot.filled {
+            background: #38bdf8;
+            border-color: #38bdf8;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+            transform: scale(1.15);
+        }
+
+        .pin-keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            width: 100%;
+            max-width: 280px;
+        }
+
+        .pin-key {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            height: 64px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.12s ease;
+            user-select: none;
+        }
+
+        .pin-key:active {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(0.92);
+        }
+
+        .pin-key.key-action {
+            font-size: 14px;
+            font-weight: 600;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+        }
+
+        /* TOP APP HEADER */
+        .app-header {
+            background: linear-gradient(145deg, #0f172a 0%, #1e293b 60%, #1e3a8a 100%);
+            color: white;
+            padding: 20px 20px 18px;
+            border-bottom-left-radius: 26px;
+            border-bottom-right-radius: 26px;
+            box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.3);
+            position: relative;
+            z-index: 10;
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            padding: 6px 12px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            color: #93c5fd;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .refresh-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            padding: 6px 10px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
+            font-weight: 700;
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .lock-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: white;
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .user-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-full);
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            overflow: hidden;
+            background: linear-gradient(135deg, #3b82f6, #60a5fa);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 15px;
+            color: white;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .header-profile h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+        }
+
+        .header-profile p {
+            margin: 3px 0 8px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .emp-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(37, 99, 235, 0.25);
+            border: 1px solid rgba(96, 165, 250, 0.35);
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            font-size: 12px;
+            font-weight: 600;
+            color: #bfdbfe;
+        }
+
+        /* APP BODY */
+        .app-body {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            flex: 1;
+        }
+
+        /* SCREEN / PAGE TRANSITIONS (Silky Smooth Native Mobile Feel) */
+        .app-page {
+            display: none;
+            opacity: 0;
+            transform: translateY(12px) scale(0.99);
+            will-change: opacity, transform;
+        }
+
+        .app-page.active-page {
+            display: block;
+            animation: pageSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes pageSlideUp {
+            0% {
+                opacity: 0;
+                transform: translateY(10px) scale(0.985);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* MODERN CLEAN CARDS */
+        .app-card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 18px;
+            box-shadow: var(--shadow-soft);
+            border: 1px solid var(--border-light);
+            margin-bottom: 14px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .card-title {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-nav-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f1f5f9;
+            border: none;
+            padding: 6px 12px;
+            border-radius: var(--radius-full);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .back-nav-btn:hover {
+            background: #e2e8f0;
+            color: var(--text-main);
+        }
+
+        .card-action-link {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+            cursor: pointer;
+            background: var(--primary-light);
+            padding: 5px 12px;
+            border-radius: var(--radius-full);
+        }
+
+        /* STATS TILES */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-item {
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border: 1px solid transparent;
+        }
+
+        .stat-item.stat-total {
+            background: #f8fafc;
+            border-color: #f1f5f9;
+        }
+
+        .stat-item.stat-completed {
+            background: var(--success-bg);
+            border-color: #dcfce7;
+        }
+
+        .stat-item.stat-completed .stat-value {
+            color: var(--success-text);
+        }
+
+        .stat-item.stat-leave {
+            background: var(--purple-bg);
+            border-color: #f3e8ff;
+        }
+
+        .stat-item.stat-leave .stat-value {
+            color: var(--purple-text);
+        }
+
+        .stat-item.stat-hours {
+            background: var(--primary-light);
+            border-color: #dbeafe;
+        }
+
+        .stat-item.stat-hours .stat-value {
+            color: var(--primary);
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-main);
+            line-height: 1.2;
+        }
+
+        .stat-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* SEGMENT CONTROL */
+        .segment-control {
+            display: flex;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: var(--radius-full);
+            gap: 4px;
+        }
+
+        .segment-btn {
+            flex: 1;
+            padding: 10px 10px;
+            border: none;
+            border-radius: var(--radius-full);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .segment-btn.active {
+            background: var(--surface);
+            color: var(--primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .segment-btn.active-leave {
+            background: var(--purple);
+            color: white;
+            box-shadow: 0 3px 10px rgba(139, 92, 246, 0.25);
+        }
+
+        /* FORM INPUTS */
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: #334155;
+            margin-bottom: 6px;
+        }
+
+        .form-input,
+        .form-select {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 16px;
+            font-family: inherit;
+            color: var(--text-main);
+            background: #ffffff;
+            border: 1px solid var(--border-input);
+            border-radius: var(--radius-sm);
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        .form-input[readonly] {
+            background: #f8fafc;
+            color: #64748b;
+            border-color: #f1f5f9;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        /* NOTICE PILLS */
+        .info-pill-box {
+            padding: 12px 14px;
+            border-radius: var(--radius-md);
+            background: var(--primary-light);
+            border: 1px solid #dbeafe;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary);
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .leave-pill-box {
+            padding: 12px 14px;
+            border-radius: var(--radius-md);
+            background: var(--purple-bg);
+            border: 1px solid #f3e8ff;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--purple-text);
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        /* BUTTONS */
+        .app-btn {
+            width: 100%;
+            padding: 13px 18px;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: inherit;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.15s ease;
+            text-decoration: none;
+            margin-top: 8px;
+        }
+
+        .app-btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+        }
+
+        .btn-excel {
+            background: var(--excel-gradient);
+            color: white;
+            box-shadow: 0 4px 14px rgba(16, 124, 65, 0.25);
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-danger {
+            background: var(--danger-bg);
+            color: var(--danger-text);
+            padding: 8px 12px;
+            font-size: 12px;
+            border-radius: var(--radius-sm);
+        }
+
+        .btn-edit {
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 8px 12px;
+            font-size: 12px;
+            border-radius: var(--radius-sm);
+        }
+
+        /* RECORD LIST ITEM */
+        .record-card {
+            background: white;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 15px;
+            margin-top: 10px;
+            box-shadow: var(--shadow-soft);
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .record-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .record-date {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* BADGES */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 9px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .badge-complete {
+            background: var(--success-bg);
+            color: var(--success-text);
+        }
+
+        .badge-incomplete {
+            background: var(--warning-bg);
+            color: var(--warning-text);
+        }
+
+        .badge-leave {
+            background: var(--purple-bg);
+            color: var(--purple-text);
+        }
+
+        .record-detail-row {
+            font-size: 13px;
+            color: #475569;
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+        }
+
+        .record-detail-row b {
+            color: #1e293b;
+        }
+
+        .record-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 6px;
+            padding-top: 8px;
+            border-top: 1px solid #f8fafc;
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            text-align: center;
+            padding: 28px 15px;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+
+        /* IN-APP TOAST NOTIFICATIONS & CONFIRM DIALOG */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 90%;
+            max-width: 400px;
+            pointer-events: none;
+        }
+
+        .toast {
+            pointer-events: auto;
+            background: #0f172a;
+            color: white;
+            padding: 12px 18px;
+            border-radius: var(--radius-md);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: toastSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .toast-success {
+            background: #064e3b;
+            border-color: #059669;
+            color: #a7f3d0;
+        }
+
+        .toast-danger {
+            background: #7f1d1d;
+            border-color: #dc2626;
+            color: #fecaca;
+        }
+
+        .toast-warning {
+            background: #78350f;
+            border-color: #d97706;
+            color: #fef3c7;
+        }
+
+        @keyframes toastSlideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-16px) scale(0.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            padding: 20px;
+            animation: fadeInPage 0.15s ease;
+        }
+
+        .dialog-card {
+            background: white;
+            width: 100%;
+            max-width: 380px;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+            text-align: center;
+            border: 1px solid var(--border-light);
+        }
+
+        .dialog-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .dialog-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--text-main);
+            margin: 0 0 8px;
+        }
+
+        .dialog-message {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin: 0 0 20px;
+            line-height: 1.5;
+        }
+
+        .dialog-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        /* FROSTED BOTTOM NAVIGATION */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            max-width: 480px;
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(226, 232, 240, 0.8);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 10px 14px;
+            z-index: 100;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 6px 14px;
+            border-radius: var(--radius-md);
+            transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+
+        .nav-item:active {
+            transform: scale(0.92);
+        }
+
+        .nav-item-icon {
+            font-size: 20px;
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+            font-weight: 800;
+        }
+
+        .nav-item.active .nav-item-icon {
+            transform: translateY(-2px) scale(1.14);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* PRINT MEDIA */
+        @media print {
+            body {
+                background: white;
+            }
+
+            .app-container {
+                max-width: 100%;
+                box-shadow: none;
+                padding-bottom: 0;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .pin-lock-screen {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+
+
+<body>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="toast-container no-print"></div>
+
+    <!-- IN-APP CUSTOM CONFIRM / ALERT DIALOG -->
+    <div id="confirmDialogOverlay" class="dialog-overlay hidden no-print">
+        <div class="dialog-card">
+            <div id="dialogIcon" class="dialog-icon">❓</div>
+            <h3 id="dialogTitle" class="dialog-title">Confirm Action</h3>
+            <p id="dialogMessage" class="dialog-message">Are you sure you want to proceed?</p>
+            <div class="dialog-buttons">
+                <button type="button" id="dialogCancelBtn" class="app-btn btn-secondary" style="margin-top:0;"
+                    onclick="handleDialogCancel()">
+                    Cancel
+                </button>
+                <button type="button" id="dialogConfirmBtn" class="app-btn btn-primary" style="margin-top:0;"
+                    onclick="handleDialogConfirm()">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+     LOGIN PIN LOCK SCREEN
+===================================================== -->
+    <div id="pinLockScreen" class="pin-lock-screen">
+        <div class="pin-lock-avatar">
+            <img src="user.jpeg" alt="Driver Profile" onerror="this.src=''; this.parentElement.innerText='SP';">
+        </div>
+
+        <h2 style="margin:0; font-size:20px; font-weight:800; color:white;">
+            W.A.M. S.P. Herath
+        </h2>
+
+        <p style="margin:4px 0 0; font-size:13px; color:#94a3b8;">
+            Engine Driver &bull; Emp No: 36835
+        </p>
+
+        <div
+            style="font-size:12px; color:#38bdf8; font-weight:700; margin-top:14px; text-transform:uppercase; letter-spacing:0.5px;">
+            Enter Security PIN
+        </div>
+
+        <div class="pin-dots">
+            <div class="pin-dot" id="dot1"></div>
+            <div class="pin-dot" id="dot2"></div>
+            <div class="pin-dot" id="dot3"></div>
+            <div class="pin-dot" id="dot4"></div>
+            <div class="pin-dot" id="dot5"></div>
+        </div>
+
+        <div class="pin-keypad">
+            <button type="button" class="pin-key" onclick="pressPin('1')">1</button>
+            <button type="button" class="pin-key" onclick="pressPin('2')">2</button>
+            <button type="button" class="pin-key" onclick="pressPin('3')">3</button>
+
+            <button type="button" class="pin-key" onclick="pressPin('4')">4</button>
+            <button type="button" class="pin-key" onclick="pressPin('5')">5</button>
+            <button type="button" class="pin-key" onclick="pressPin('6')">6</button>
+
+            <button type="button" class="pin-key" onclick="pressPin('7')">7</button>
+            <button type="button" class="pin-key" onclick="pressPin('8')">8</button>
+            <button type="button" class="pin-key" onclick="pressPin('9')">9</button>
+
+            <button type="button" class="pin-key key-action" onclick="clearPin()">Clear</button>
+            <button type="button" class="pin-key" onclick="pressPin('0')">0</button>
+            <button type="button" class="pin-key key-action" onclick="backspacePin()">⌫</button>
+        </div>
+
+        <div style="margin-top:20px; font-size:11px; color:#64748b;">
+
+        </div>
+    </div>
+
+
+    <div class="app-container">
+
+        <!-- =====================================================
+         APP HEADER / PROFILE BAR
+    ===================================================== -->
+        <header class="app-header no-print">
+
+            <div class="header-top">
+                <div class="header-actions">
+                    <div class="brand-badge">
+                        🚆 SLR Driver
+                    </div>
+                    <button type="button" class="refresh-badge" title="Refresh Data from Google Sheet"
+                        onclick="fetchRecordsFromSheet()">
+                        🔄 Refresh
+                    </button>
+                    <button type="button" class="lock-btn" title="Lock App" onclick="lockApp()">
+                        🔒
+                    </button>
+                </div>
+
+                <div class="user-avatar">
+                    <img src="user.jpeg" alt="Driver Profile"
+                        onerror="this.style.display='none'; this.parentElement.innerText='SP';">
+                </div>
+            </div>
+
+            <div class="header-profile">
+                <h1>W.A.M. S.P. Herath</h1>
+                <p>
+                    Engine Driver &bull; Locomotive Division
+                </p>
+                <span class="emp-badge">
+                    🆔 Emp No: 36835
+                </span>
+            </div>
+
+        </header>
+
+
+        <!-- =====================================================
+         MAIN APP CONTENT (PAGE BASED SPA)
+    ===================================================== -->
+        <main class="app-body">
+
+            <!-- =====================================================
+             PAGE 1: DASHBOARD & OVERVIEW
+        ===================================================== -->
+            <section id="pageDashboard" class="app-page active-page">
+
+                <!-- 1. REPORT PERIOD SELECTION (TOP) -->
+                <div class="app-card no-print">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            📅 Working Period
+                        </h2>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Report Month</label>
+                        <input type="month" id="month" class="form-input" value="2026-09"
+                            onchange="monthChanged('month')">
+                    </div>
+
+                    <label class="form-label">Period Range</label>
+                    <div class="segment-control">
+                        <button class="segment-btn period-btn-1 active" onclick="selectPeriod('first')">
+                            📅 01 – 15
+                        </button>
+                        <button class="segment-btn period-btn-2" onclick="selectPeriod('second')">
+                            📅 16 – 30
+                        </button>
+                        <button class="segment-btn period-btn-all" onclick="selectPeriod('all')">
+                            📅 Full Month
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. DASHBOARD STATS CARD -->
+                <div class="app-card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            📊 Duty &amp; Leave Overview
+                        </h2>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-item stat-total">
+                            <div id="totalRecords" class="stat-value">0</div>
+                            <div class="stat-name">Total Entries</div>
+                        </div>
+
+                        <div class="stat-item stat-completed">
+                            <div id="completedRecords" class="stat-value">0</div>
+                            <div class="stat-name">Completed</div>
+                        </div>
+
+                        <div class="stat-item stat-leave">
+                            <div id="leaveDays" class="stat-value">0</div>
+                            <div class="stat-name">Leave Days</div>
+                        </div>
+
+                        <div class="stat-item stat-hours">
+                            <div id="totalHours" class="stat-value">0h 0m</div>
+                            <div class="stat-name">Period Hours</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:14px; display:flex; flex-direction:column; gap:8px;">
+                        <button class="app-btn btn-primary" onclick="openNewEntryPage()">
+                            ➕ Add New Turn / Leave Entry
+                        </button>
+
+                        <button class="app-btn btn-secondary no-print" onclick="switchNav('records')">
+                            📋 View Saved Records
+                        </button>
+                    </div>
+                </div>
+
+            </section>
+
+
+            <!-- =====================================================
+             PAGE 2: DEDICATED NEW ENTRY / EDIT FORM PAGE
+        ===================================================== -->
+            <section id="pageForm" class="app-page no-print">
+
+                <div class="app-card">
+                    <div class="card-header">
+                        <button type="button" class="back-nav-btn" onclick="goBackFromForm()">
+                            ← Back
+                        </button>
+                        <h2 class="card-title" id="formTitle">
+                            📝 Add New Record
+                        </h2>
+                        <div style="width:50px;"></div>
+                    </div>
+
+                    <!-- CATEGORY SEGMENT (Duty vs Leave) -->
+                    <div class="form-group">
+                        <label class="form-label">Record Type</label>
+                        <div class="segment-control">
+                            <button type="button" id="btnCatDuty" class="segment-btn active"
+                                onclick="setCategory('duty')">
+                                🚆 Working Turn
+                            </button>
+                            <button type="button" id="btnCatLeave" class="segment-btn" onclick="setCategory('leave')">
+                                🏖️ Leave Option
+                            </button>
+                        </div>
+                        <!-- Hidden select for programmatic syncing -->
+                        <select id="recordCategory" class="hidden" onchange="recordCategoryChanged()">
+                            <option value="duty">duty</option>
+                            <option value="leave">leave</option>
+                        </select>
+                    </div>
+
+                    <!-- WORKING / LEAVE DATE -->
+                    <div class="form-group">
+                        <label id="dateLabel" class="form-label">Working Date</label>
+                        <input type="date" id="workDate" class="form-input">
+                    </div>
+
+                    <!-- DRIVER & EMPLOYEE INFO (AUTO-FILLED) -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Driver Name</label>
+                            <input type="text" id="driverName" class="form-input" value="W.A.M. S.P. Herath">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Employee No</label>
+                            <input type="text" id="employeeNo" class="form-input" value="36835" readonly>
+                        </div>
+                    </div>
+
+                    <!-- =================================================
+                     LEAVE CONTAINER (No On/Off time asked)
+                ================================================= -->
+                    <div id="leaveFields" class="hidden">
+                        <div class="form-group">
+                            <label class="form-label">Leave Type</label>
+                            <select id="leaveType" class="form-select">
+                                <option value="Casual Leave">Casual Leave (CL)</option>
+                                <option value="Sick / Medical Leave">Sick / Medical Leave (SL/ML)</option>
+                                <option value="Annual Leave">Annual Leave (AL)</option>
+                                <option value="Duty Leave">Duty Leave (DL)</option>
+                                <option value="Rest Day / Off Day">Rest Day / Off Day</option>
+                                <option value="Half Day Leave">Half Day Leave</option>
+                                <option value="Special Leave">Special Leave</option>
+                                <option value="Other Leave">Other Leave</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Leave Duration Mode</label>
+                            <select id="leaveSelectionMode" class="form-select" onchange="leaveSelectionModeChanged()">
+                                <option value="single">Single Day Leave</option>
+                                <option value="multiple">Multiple Days (Date Range)</option>
+                            </select>
+                        </div>
+
+                        <div id="leaveMultiArea" class="form-group hidden">
+                            <label class="form-label">Leave End Date (To Date)</label>
+                            <input type="date" id="leaveEndDate" class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Remarks / Reason (Optional)</label>
+                            <input type="text" id="leaveRemarks" class="form-input"
+                                placeholder="e.g. Medical certificate / Personal">
+                        </div>
+
+                        <div class="leave-pill-box">
+                            🏖️ Leave Mode: On-Time &amp; Off-Time are skipped automatically.
+                        </div>
+                    </div>
+
+                    <!-- =================================================
+                     DUTY TURN CONTAINER
+                ================================================= -->
+                    <div id="dutyFields">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Turn No</label>
+                                <input type="text" id="turnNumber" class="form-input" placeholder="e.g. 425">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Turn Type</label>
+                                <select id="turnType" class="form-select" onchange="turnTypeChanged()">
+                                    <option value="single">Single Day</option>
+                                    <option value="multiple">Multiple Day</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Turn Information</label>
+                            <input type="text" id="turnInfo" class="form-input" placeholder="e.g. Colombo - Kandy">
+                        </div>
+
+                        <!-- DAY 1 SECTION -->
+                        <div
+                            style="background:#f8fafc; padding:12px; border-radius:var(--radius-sm); border:1px solid #f1f5f9; margin-bottom:12px;">
+                            <label class="form-label" style="color:var(--primary); margin-top:0;">🌅 Day 1 Times</label>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label" style="font-size:12px;">On Time</label>
+                                    <input type="time" id="day1On" class="form-input" onchange="calculateHours()">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" style="font-size:12px;">Off Time</label>
+                                    <input type="time" id="day1Off" class="form-input" onchange="calculateHours()">
+                                </div>
+                            </div>
+                            <div id="day1Hours" class="info-pill-box"
+                                style="margin-top:4px; font-size:12px; padding:6px;">
+                                Day 1 Hours: 0h 0m
+                            </div>
+                        </div>
+
+                        <!-- DAY 2 SECTION -->
+                        <div id="day2Area" class="hidden"
+                            style="background:#f8fafc; padding:12px; border-radius:var(--radius-sm); border:1px solid #f1f5f9; margin-bottom:12px;">
+                            <label class="form-label" style="color:var(--primary); margin-top:0;">🌄 Day 2 Times</label>
+                            <div class="form-group">
+                                <label class="form-label" style="font-size:12px;">Day 2 Date</label>
+                                <input type="date" id="day2Date" class="form-input">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label" style="font-size:12px;">Day 2 On Time</label>
+                                    <input type="time" id="day2On" class="form-input" onchange="calculateHours()">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" style="font-size:12px;">Day 2 Off Time</label>
+                                    <input type="time" id="day2Off" class="form-input" onchange="calculateHours()">
+                                </div>
+                            </div>
+                            <div id="day2Hours" class="info-pill-box"
+                                style="margin-top:4px; font-size:12px; padding:6px;">
+                                Day 2 Hours: 0h 0m
+                            </div>
+                            <div id="totalTripHours" class="info-pill-box"
+                                style="margin-top:6px; background:#eff6ff; font-size:13px; font-weight:800;">
+                                Total Turn Time: 0h 0m
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SAVE / RESET BUTTONS -->
+                    <button class="app-btn btn-success" onclick="saveRecord()">
+                        💾 Save Record to Google Sheet
+                    </button>
+
+                    <button class="app-btn btn-secondary" onclick="clearForm()">
+                        🔄 Clear Fields
+                    </button>
+
+                </div>
+
+            </section>
+
+
+            <!-- =====================================================
+             PAGE 3: SAVED RECORDS LIST PAGE (WITH PERIOD FILTER & PDF BTN)
+        ===================================================== -->
+            <section id="pageRecords" class="app-page">
+
+                <!-- PERIOD FILTER & ACTIONS CARD -->
+                <div class="app-card no-print">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            🔍 Filter Records
+                        </h2>
+                        <span class="card-action-link" onclick="openNewEntryPage()">
+                            + Add Entry
+                        </span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Select Month</label>
+                        <input type="month" id="monthRecords" class="form-input" value="2026-09"
+                            onchange="monthChanged('monthRecords')">
+                    </div>
+
+                    <label class="form-label">Period Range</label>
+                    <div class="segment-control">
+                        <button class="segment-btn period-btn-1 active" onclick="selectPeriod('first')">
+                            📅 01 – 15
+                        </button>
+                        <button class="segment-btn period-btn-2" onclick="selectPeriod('second')">
+                            📅 16 – 30
+                        </button>
+                        <button class="segment-btn period-btn-all" onclick="selectPeriod('all')">
+                            📅 Full Month
+                        </button>
+                    </div>
+
+                    <!-- DOWNLOAD PDF & EXCEL QUICK ACTIONS -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px;">
+                        <button class="app-btn btn-primary" style="margin-top:0; font-size:13px; padding:10px;"
+                            onclick="printReport()">
+                            🖨️ Download PDF
+                        </button>
+                        <button class="app-btn btn-excel" style="margin-top:0; font-size:13px; padding:10px;"
+                            onclick="exportToExcel(selectedPeriod !== 'all')">
+                            📥 Export Excel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SAVED RECORDS LIST CARD -->
+                <div class="app-card">
+                    <div class="card-header">
+                        <h2 class="card-title" id="recordsListTitle">
+                            📋 Google Sheet Records
+                        </h2>
+                    </div>
+
+                    <div id="recordsList">
+                        <!-- Dynamic Record Cards Injected Here -->
+                    </div>
+                </div>
+
+                <!-- HIDDEN FILE INPUT FOR EXCEL IMPORT -->
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" style="display:none;"
+                    onchange="importFromExcel(event)">
+
+            </section>
+
+        </main>
+
+
+        <!-- =====================================================
+         FROSTED MOBILE APP BOTTOM NAVIGATION BAR (3 TABS)
+    ===================================================== -->
+        <nav class="bottom-nav no-print">
+            <button class="nav-item active" id="navDashboard" onclick="switchNav('dashboard')">
+                <span class="nav-item-icon">📊</span>
+                <span>Overview</span>
+            </button>
+
+            <button class="nav-item" id="navForm" onclick="openNewEntryPage()">
+                <span class="nav-item-icon">📝</span>
+                <span>New Entry</span>
+            </button>
+
+            <button class="nav-item" id="navRecords" onclick="switchNav('records')">
+                <span class="nav-item-icon">📋</span>
+                <span>Records</span>
+            </button>
+        </nav>
+
+    </div>
+
+
+    <script>
+
+        /* =====================================================
+           SECURITY: BLOCK INSPECT & CONTEXT MENU
+        ===================================================== */
+
+        document.addEventListener('contextmenu', function (e) {
+            e.preventDefault();
+            return false;
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (
+                e.key === 'F12' ||
+                (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) ||
+                (e.ctrlKey && (e.key === 'U' || e.key === 'u' || e.key === 'S' || e.key === 's'))
+            ) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        });
+
+
+        /* =====================================================
+           HARDCODED GOOGLE APPS SCRIPT URL
+        ===================================================== */
+
+        const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzplgErmllOG7NqWOtrT1_WLo7tqFu2zT27RhbIILO9cKy6m2FMQ6S8CVJ49J5BKT5h/exec";
+        const HARDCODED_SECURITY_PIN = "36835";
+
+
+        /* =====================================================
+           IN-APP TOAST & CONFIRM DIALOG SYSTEM
+        ===================================================== */
+
+        function showToast(message, type = "info", duration = 3000) {
+
+            const container = document.getElementById("toastContainer");
+            if (!container) return;
+
+            const toast = document.createElement("div");
+            toast.className = `toast toast-${type}`;
+
+            let icon = "ℹ️";
+            if (type === "success") icon = "✓";
+            if (type === "danger") icon = "⚠️";
+            if (type === "warning") icon = "🔔";
+
+            toast.innerHTML = `<span style="font-size:16px;">${icon}</span><span>${escapeHTML(message)}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = "0";
+                toast.style.transition = "opacity 0.25s ease, transform 0.25s ease";
+                toast.style.transform = "translateY(-10px)";
+                setTimeout(() => toast.remove(), 250);
+            }, duration);
+
+        }
+
+        let currentConfirmCallback = null;
+        let currentCancelCallback = null;
+
+        function showConfirmDialog(options) {
+
+            const overlay = document.getElementById("confirmDialogOverlay");
+            if (!overlay) return;
+
+            document.getElementById("dialogIcon").innerText = options.icon || "❓";
+            document.getElementById("dialogTitle").innerText = options.title || "Confirmation";
+            document.getElementById("dialogMessage").innerText = options.message || "Are you sure?";
+
+            const confirmBtn = document.getElementById("dialogConfirmBtn");
+            confirmBtn.innerText = options.confirmText || "Confirm";
+            confirmBtn.className = options.isDanger ? "app-btn btn-danger" : "app-btn btn-primary";
+            confirmBtn.style.marginTop = "0";
+
+            const cancelBtn = document.getElementById("dialogCancelBtn");
+            cancelBtn.innerText = options.cancelText || "Cancel";
+            cancelBtn.style.display = options.hideCancel ? "none" : "block";
+
+            currentConfirmCallback = options.onConfirm || null;
+            currentCancelCallback = options.onCancel || null;
+
+            overlay.classList.remove("hidden");
+
+        }
+
+        function handleDialogConfirm() {
+
+            const overlay = document.getElementById("confirmDialogOverlay");
+            if (overlay) overlay.classList.add("hidden");
+
+            if (typeof currentConfirmCallback === "function") {
+                currentConfirmCallback();
+            }
+
+        }
+
+        function handleDialogCancel() {
+
+            const overlay = document.getElementById("confirmDialogOverlay");
+            if (overlay) overlay.classList.add("hidden");
+
+            if (typeof currentCancelCallback === "function") {
+                currentCancelCallback();
+            }
+
+        }
+
+
+        /* =====================================================
+           DATA & SECURITY STATE (IN-MEMORY ONLY)
+        ===================================================== */
+
+        let records = [];
+
+        let selectedPeriod = "first";
+
+        let editingId = null;
+
+        let previousPage = "dashboard";
+
+        let currentPage = "dashboard";
+
+        let enteredPin = "";
+
+
+        /* =====================================================
+           PIN AUTHENTICATION & LOCK SYSTEM
+        ===================================================== */
+
+        function getSecurityPin() {
+            return HARDCODED_SECURITY_PIN;
+        }
+
+        function updatePinDots() {
+            const targetPin = getSecurityPin();
+            for (let i = 1; i <= 5; i++) {
+                const dot = document.getElementById("dot" + i);
+                if (dot) {
+                    if (i <= enteredPin.length) {
+                        dot.classList.add("filled");
+                    } else {
+                        dot.classList.remove("filled");
+                    }
+                }
+            }
+        }
+
+        function pressPin(digit) {
+            const targetPin = getSecurityPin();
+            if (enteredPin.length < targetPin.length) {
+                enteredPin += digit;
+                updatePinDots();
+            }
+
+            if (enteredPin.length === targetPin.length) {
+                setTimeout(() => {
+                    if (enteredPin === targetPin) {
+                        unlockApp();
+                    } else {
+                        showToast("Incorrect PIN. Please try again.", "danger");
+                        clearPin();
+                    }
+                }, 120);
+            }
+        }
+
+        function clearPin() {
+            enteredPin = "";
+            updatePinDots();
+        }
+
+        function backspacePin() {
+            if (enteredPin.length > 0) {
+                enteredPin = enteredPin.slice(0, -1);
+                updatePinDots();
+            }
+        }
+
+        function unlockApp() {
+            const lockScreen = document.getElementById("pinLockScreen");
+            if (lockScreen) {
+                lockScreen.style.opacity = "0";
+                lockScreen.style.transition = "opacity 0.25s ease";
+                setTimeout(() => {
+                    lockScreen.classList.add("hidden");
+                }, 250);
+            }
+
+            showToast("Welcome back, W.A.M. S.P. Herath", "success");
+
+            // Fetch records from Google Sheet
+            fetchRecordsFromSheet();
+
+            // Log login to Google Sheet
+            saveToGoogleSheet({
+                action: "logLogin",
+                driver: "W.A.M. S.P. Herath",
+                employeeNo: "36835",
+                status: "SUCCESS_LOGIN",
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        function lockApp() {
+            clearPin();
+            const lockScreen = document.getElementById("pinLockScreen");
+            if (lockScreen) {
+                lockScreen.classList.remove("hidden");
+                lockScreen.style.opacity = "1";
+            }
+        }
+
+
+        /* =====================================================
+           GOOGLE SHEET DIRECT API
+        ===================================================== */
+
+        async function saveToGoogleSheet(recordOrPayload) {
+
+            try {
+                await fetch(GOOGLE_SHEET_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(recordOrPayload)
+                });
+                return true;
+            } catch (err) {
+                console.warn("Google Sheet sync notice:", err);
+                return false;
+            }
+
+        }
+
+
+        function cleanTime(t) {
+            if (!t || t === "—") return "";
+            const str = String(t);
+            const m = str.match(/(\d{1,2}):(\d{2})/);
+            if (m) return m[1].padStart(2, "0") + ":" + m[2];
+            return str;
+        }
+
+        function cleanDate(d) {
+            if (!d) return "";
+            let str = String(d).trim();
+            if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+                return str.substring(0, 10);
+            }
+            if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(str)) {
+                const p = str.split("/");
+                return p[2] + "-" + p[1].padStart(2, "0") + "-" + p[0].padStart(2, "0");
+            }
+            const dateStrWithYear = str.includes("202") ? str : (str + " 2026");
+            const parsed = new Date(dateStrWithYear);
+            if (!isNaN(parsed.getTime())) {
+                const y = parsed.getFullYear();
+                const m = String(parsed.getMonth() + 1).padStart(2, "0");
+                const dt = String(parsed.getDate()).padStart(2, "0");
+                return y + "-" + m + "-" + dt;
+            }
+            return str;
+        }
+
+        function normalizeRecord(r) {
+            if (!r) return null;
+            return {
+                ...r,
+                date: cleanDate(r.date),
+                day1On: cleanTime(r.day1On),
+                day1Off: cleanTime(r.day1Off),
+                day2Date: cleanDate(r.day2Date),
+                day2On: cleanTime(r.day2On),
+                day2Off: cleanTime(r.day2Off),
+                totalMinutes: Number(r.totalMinutes) || 0
+            };
+        }
+
+        function fetchRecordsFromSheet() {
+
+            showToast("Loading records from Google Sheet...", "info", 1800);
+
+            const callbackName = "onGoogleSheetDataLoaded_" + Date.now();
+
+            window[callbackName] = function (data) {
+                try {
+                    delete window[callbackName];
+                } catch(e) {}
+                const el = document.getElementById("jsonpScript");
+                if (el && el.parentNode) el.parentNode.removeChild(el);
+
+                let recordList = Array.isArray(data) ? data : (data && data.records ? data.records : null);
+                if (recordList) {
+                    records = recordList.map(normalizeRecord).filter(Boolean);
+                    displayRecords();
+                    updateDashboard();
+                    showToast(`Loaded ${records.length} records from Google Sheet.`, "success");
+                }
+            };
+
+            const scriptEl = document.createElement("script");
+            scriptEl.id = "jsonpScript";
+            scriptEl.src = GOOGLE_SHEET_URL + "?action=getRecords&callback=" + callbackName + "&_t=" + Date.now();
+
+            scriptEl.onerror = function () {
+                const el = document.getElementById("jsonpScript");
+                if (el && el.parentNode) el.parentNode.removeChild(el);
+
+                fetch(GOOGLE_SHEET_URL + "?action=getRecords&_t=" + Date.now(), { redirect: "follow" })
+                    .then(res => res.json())
+                    .then(data => {
+                        let list = Array.isArray(data) ? data : (data && data.records ? data.records : null);
+                        if (list) {
+                            records = list.map(normalizeRecord).filter(Boolean);
+                            displayRecords();
+                            updateDashboard();
+                            showToast(`Loaded ${records.length} records from Google Sheet.`, "success");
+                        }
+                    })
+                    .catch(e => {
+                        console.warn("Sheet fetch notice:", e);
+                        displayRecords();
+                    });
+            };
+
+            document.body.appendChild(scriptEl);
+
+        }
+
+
+        /* =====================================================
+           MOBILE APP PAGE SWITCHING (SPA)
+        ===================================================== */
+
+        function switchNav(pageName) {
+
+            if (currentPage !== pageName) {
+                previousPage = currentPage;
+            }
+            currentPage = pageName;
+
+
+            const pages = {
+                'dashboard': 'pageDashboard',
+                'form': 'pageForm',
+                'records': 'pageRecords'
+            };
+
+            const navBtns = {
+                'dashboard': 'navDashboard',
+                'form': 'navForm',
+                'records': 'navRecords'
+            };
+
+
+            Object.keys(pages).forEach(p => {
+                const pageEl = document.getElementById(pages[p]);
+                const btnEl = document.getElementById(navBtns[p]);
+
+                if (pageEl) {
+                    if (p === pageName) {
+                        pageEl.classList.remove('active-page');
+                        void pageEl.offsetWidth; // Force reflow for smooth animation replay
+                        pageEl.classList.add('active-page');
+                    } else {
+                        pageEl.classList.remove('active-page');
+                    }
+                }
+
+                if (btnEl) {
+                    if (p === pageName) {
+                        btnEl.classList.add('active');
+                    } else {
+                        btnEl.classList.remove('active');
+                    }
+                }
+            });
+
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        }
+
+
+        function openNewEntryPage() {
+
+            if (!editingId) {
+                clearForm();
+            }
+            switchNav('form');
+
+        }
+
+
+        function goBackFromForm() {
+
+            switchNav(previousPage || 'dashboard');
+
+        }
+
+
+        /* =====================================================
+           MONTH
+        ===================================================== */
+
+        function getMonth() {
+
+            const mEl = document.getElementById("month");
+            return mEl ? mEl.value : "2026-09";
+
+        }
+
+
+        function monthChanged(sourceId) {
+
+            let month = "";
+
+            if (sourceId && document.getElementById(sourceId)) {
+                month = document.getElementById(sourceId).value;
+            } else {
+                month = getMonth();
+            }
+
+            if (!month) return;
+
+
+            // Sync all month pickers
+            const m1 = document.getElementById("month");
+            const m2 = document.getElementById("monthRecords");
+            if (m1) m1.value = month;
+            if (m2) m2.value = month;
+
+
+            const parts =
+                month.split("-");
+
+
+            const year =
+                Number(parts[0]);
+
+
+            const monthNumber =
+                Number(parts[1]);
+
+
+            const lastDay =
+                new Date(
+                    year,
+                    monthNumber,
+                    0
+                ).getDate();
+
+
+            document.querySelectorAll(
+                ".period-btn-2"
+            ).forEach(btn => {
+                btn.innerHTML = "📅 16 – " + lastDay;
+            });
+
+
+            displayRecords();
+
+        }
+
+
+        /* =====================================================
+           PERIOD
+        ===================================================== */
+
+        function selectPeriod(period) {
+
+            selectedPeriod =
+                period;
+
+
+            document.querySelectorAll(".period-btn-1").forEach(b => {
+                b.classList.toggle("active", period === "first");
+            });
+
+            document.querySelectorAll(".period-btn-2").forEach(b => {
+                b.classList.toggle("active", period === "second");
+            });
+
+            document.querySelectorAll(".period-btn-all").forEach(b => {
+                b.classList.toggle("active", period === "all");
+            });
+
+
+            displayRecords();
+
+        }
+
+
+        /* =====================================================
+           PERIOD CHECK
+        ===================================================== */
+
+        function belongsToPeriod(record) {
+
+            if (!record) return false;
+
+            const month = getMonth();
+            const recordDate = cleanDate(record.date);
+
+            if (!recordDate || recordDate.substring(0, 7) !== month) {
+                return false;
+            }
+
+            if (selectedPeriod === "all") {
+                return true;
+            }
+
+            const day = Number(recordDate.substring(8, 10));
+
+            if (selectedPeriod === "first") {
+                return day >= 1 && day <= 15;
+            }
+
+            return day >= 16;
+
+        }
+
+
+        /* =====================================================
+           RECORD CATEGORY TOGGLE (DUTY vs LEAVE)
+        ===================================================== */
+
+        function setCategory(cat) {
+
+            document.getElementById("recordCategory").value = cat;
+
+            const btnDuty = document.getElementById("btnCatDuty");
+
+            const btnLeave = document.getElementById("btnCatLeave");
+
+
+            if (cat === "leave") {
+
+                btnDuty.classList.remove("active");
+
+                btnLeave.classList.add("active-leave");
+
+            }
+            else {
+
+                btnDuty.classList.add("active");
+
+                btnLeave.classList.remove("active-leave");
+
+            }
+
+
+            recordCategoryChanged();
+
+        }
+
+
+        function recordCategoryChanged() {
+
+            const cat =
+                document.getElementById(
+                    "recordCategory"
+                ).value;
+
+
+            const leaveFields =
+                document.getElementById(
+                    "leaveFields"
+                );
+
+
+            const dutyFields =
+                document.getElementById(
+                    "dutyFields"
+                );
+
+
+            const dateLabel =
+                document.getElementById(
+                    "dateLabel"
+                );
+
+
+            const btnDuty = document.getElementById("btnCatDuty");
+
+            const btnLeave = document.getElementById("btnCatLeave");
+
+
+            if (cat === "leave") {
+
+                leaveFields.classList.remove("hidden");
+
+                dutyFields.classList.add("hidden");
+
+                dateLabel.innerText = "Leave Start Date";
+
+                if (btnDuty) btnDuty.classList.remove("active");
+
+                if (btnLeave) btnLeave.classList.add("active-leave");
+
+                leaveSelectionModeChanged();
+
+            }
+            else {
+
+                leaveFields.classList.add("hidden");
+
+                dutyFields.classList.remove("hidden");
+
+                dateLabel.innerText = "Working Date";
+
+                if (btnDuty) btnDuty.classList.add("active");
+
+                if (btnLeave) btnLeave.classList.remove("active-leave");
+
+                turnTypeChanged();
+
+            }
+
+        }
+
+
+        /* =====================================================
+           LEAVE SELECTION MODE (Single vs Multiple Days)
+        ===================================================== */
+
+        function leaveSelectionModeChanged() {
+
+            const mode =
+                document.getElementById(
+                    "leaveSelectionMode"
+                ).value;
+
+
+            const multiArea =
+                document.getElementById(
+                    "leaveMultiArea"
+                );
+
+
+            if (mode === "multiple") {
+
+                multiArea.classList.remove("hidden");
+
+                const startDate =
+                    document.getElementById(
+                        "workDate"
+                    ).value;
+
+                if (startDate && !document.getElementById("leaveEndDate").value) {
+
+                    document.getElementById(
+                        "leaveEndDate"
+                    ).value = startDate;
+
+                }
+
+            }
+            else {
+
+                multiArea.classList.add("hidden");
+
+            }
+
+        }
+
+
+        /* =====================================================
+           TIME FUNCTIONS
+        ===================================================== */
+
+        function toMinutes(time) {
+
+            if (!time) return null;
+
+
+            const parts =
+                time.split(":");
+
+
+            return (
+                Number(parts[0]) * 60 +
+                Number(parts[1])
+            );
+
+        }
+
+
+        function duration(on, off) {
+
+            if (!on || !off)
+                return 0;
+
+
+            let start =
+                toMinutes(on);
+
+
+            let end =
+                toMinutes(off);
+
+
+            if (end < start) {
+
+                end += 1440;
+
+            }
+
+
+            return end - start;
+
+        }
+
+
+        function formatHours(minutes) {
+
+            if (!minutes)
+                return "0h 0m";
+
+
+            const hours =
+                Math.floor(
+                    minutes / 60
+                );
+
+
+            const mins =
+                minutes % 60;
+
+
+            return hours + "h " + mins + "m";
+
+        }
+
+
+        /* =====================================================
+           CALCULATE FORM
+        ===================================================== */
+
+        function calculateHours() {
+
+            const cat =
+                document.getElementById(
+                    "recordCategory"
+                ).value;
+
+            if (cat === "leave") return;
+
+
+            const type =
+                document.getElementById(
+                    "turnType"
+                ).value;
+
+
+            const d1 =
+                duration(
+                    document.getElementById(
+                        "day1On"
+                    ).value,
+
+                    document.getElementById(
+                        "day1Off"
+                    ).value
+                );
+
+
+            document.getElementById(
+                "day1Hours"
+            ).innerText =
+                "Day 1 Hours: " +
+                formatHours(d1);
+
+
+            if (type !== "multiple")
+                return;
+
+
+            const d2 =
+                duration(
+                    document.getElementById(
+                        "day2On"
+                    ).value,
+
+                    document.getElementById(
+                        "day2Off"
+                    ).value
+                );
+
+
+            document.getElementById(
+                "day2Hours"
+            ).innerText =
+                "Day 2 Hours: " +
+                formatHours(d2);
+
+
+            let total = 0;
+
+
+            const day1On =
+                document.getElementById(
+                    "day1On"
+                ).value;
+
+
+            const day2Off =
+                document.getElementById(
+                    "day2Off"
+                ).value;
+
+
+            if (day1On && day2Off) {
+
+                let start =
+                    toMinutes(day1On);
+
+
+                let end =
+                    toMinutes(day2Off);
+
+
+                end += 1440;
+
+
+                total =
+                    end - start;
+
+            }
+
+
+            document.getElementById(
+                "totalTripHours"
+            ).innerText =
+                "Total Turn Time: " +
+                formatHours(total);
+
+        }
+
+
+        /* =====================================================
+           TURN TYPE
+        ===================================================== */
+
+        function turnTypeChanged() {
+
+            const type =
+                document.getElementById(
+                    "turnType"
+                ).value;
+
+
+            const area =
+                document.getElementById(
+                    "day2Area"
+                );
+
+
+            if (type === "multiple") {
+
+                area.classList.remove(
+                    "hidden"
+                );
+
+
+                const date =
+                    document.getElementById(
+                        "workDate"
+                    ).value;
+
+
+                if (date) {
+
+                    const d =
+                        new Date(
+                            date + "T00:00:00"
+                        );
+
+
+                    d.setDate(
+                        d.getDate() + 1
+                    );
+
+
+                    document.getElementById(
+                        "day2Date"
+                    ).value =
+                        d.toISOString()
+                            .split("T")[0];
+
+                }
+
+            }
+            else {
+
+                area.classList.add(
+                    "hidden"
+                );
+
+            }
+
+
+            calculateHours();
+
+        }
+
+
+        /* =====================================================
+           SAVE RECORD (SAVED DIRECTLY TO GOOGLE SHEET)
+        ===================================================== */
+
+        function saveRecord() {
+
+            const cat =
+                document.getElementById(
+                    "recordCategory"
+                ).value;
+
+
+            const date =
+                document.getElementById(
+                    "workDate"
+                ).value;
+
+
+            const driver =
+                document.getElementById(
+                    "driverName"
+                ).value.trim();
+
+
+            const employeeNo =
+                document.getElementById(
+                    "employeeNo"
+                ).value;
+
+
+            if (!date) {
+
+                showToast(
+                    cat === "leave"
+                        ? "Please select the Leave Start Date."
+                        : "Please select the Working Date.",
+                    "warning"
+                );
+
+                return;
+
+            }
+
+
+            /* -------------------------------------------------
+               SAVE LEAVE RECORD(S) - WITHOUT ON/OFF TIME
+            ------------------------------------------------- */
+
+            if (cat === "leave") {
+
+                const leaveType =
+                    document.getElementById(
+                        "leaveType"
+                    ).value;
+
+
+                const leaveMode =
+                    document.getElementById(
+                        "leaveSelectionMode"
+                    ).value;
+
+
+                const leaveEndDate =
+                    document.getElementById(
+                        "leaveEndDate"
+                    ).value;
+
+
+                const leaveRemarks =
+                    document.getElementById(
+                        "leaveRemarks"
+                    ).value.trim();
+
+
+                // Handle Multiple Days Leave Date Range
+                if (leaveMode === "multiple" && !editingId) {
+
+                    if (!leaveEndDate) {
+
+                        showToast("Please select the Leave End Date.", "warning");
+
+                        return;
+
+                    }
+
+
+                    const start =
+                        new Date(date + "T00:00:00");
+
+
+                    const end =
+                        new Date(leaveEndDate + "T00:00:00");
+
+
+                    if (end < start) {
+
+                        showToast("Leave End Date cannot be before Start Date.", "warning");
+
+                        return;
+
+                    }
+
+
+                    let count = 0;
+
+                    let current = new Date(start);
+
+                    const createdList = [];
+
+
+                    while (current <= end) {
+
+                        const dateStr =
+                            current.toISOString().split("T")[0];
+
+
+                        const leaveRecord = {
+
+                            id:
+                                Date.now() + Math.floor(Math.random() * 10000) + count,
+
+                            isLeave:
+                                true,
+
+                            leaveType:
+                                leaveType,
+
+                            leaveRemarks:
+                                leaveRemarks,
+
+                            date:
+                                dateStr,
+
+                            driver:
+                                driver,
+
+                            employeeNo:
+                                employeeNo,
+
+                            turn:
+                                leaveType,
+
+                            turnInfo:
+                                leaveRemarks || "Leave",
+
+                            type:
+                                "single",
+
+                            day1On:
+                                "",
+
+                            day1Off:
+                                "",
+
+                            day1Minutes:
+                                0,
+
+                            day2Date:
+                                "",
+
+                            day2On:
+                                "",
+
+                            day2Off:
+                                "",
+
+                            day2Minutes:
+                                0,
+
+                            totalMinutes:
+                                0,
+
+                            complete:
+                                true
+
+                        };
+
+
+                        records.push(leaveRecord);
+
+                        createdList.push(leaveRecord);
+
+                        count++;
+
+                        current.setDate(current.getDate() + 1);
+
+                    }
+
+
+                    // Save directly to Google Sheet
+                    saveToGoogleSheet({
+                        action: "syncAll",
+                        records: createdList
+                    });
+
+
+                    showToast(`${count} days of Leave saved directly to Google Sheet!`, "success");
+
+
+                    clearForm();
+
+                    displayRecords();
+
+                    switchNav('records');
+
+                    return;
+
+                }
+
+
+                // Single Day Leave or Editing existing record
+                const record = {
+
+                    id:
+                        editingId ||
+                        Date.now(),
+
+                    isLeave:
+                        true,
+
+                    leaveType:
+                        leaveType,
+
+                    leaveRemarks:
+                        leaveRemarks,
+
+                    date:
+                        date,
+
+                    driver:
+                        driver,
+
+                    employeeNo:
+                        employeeNo,
+
+                    turn:
+                        leaveType,
+
+                    turnInfo:
+                        leaveRemarks || "Leave",
+
+                    type:
+                        "single",
+
+                    day1On:
+                        "",
+
+                    day1Off:
+                        "",
+
+                    day1Minutes:
+                        0,
+
+                    day2Date:
+                        "",
+
+                    day2On:
+                        "",
+
+                    day2Off:
+                        "",
+
+                    day2Minutes:
+                        0,
+
+                    totalMinutes:
+                        0,
+
+                    complete:
+                        true
+
+                };
+
+
+                if (editingId) {
+
+                    const index =
+                        records.findIndex(
+                            r => r.id === editingId
+                        );
+
+                    if (index !== -1) {
+                        records[index] = record;
+                    }
+
+                }
+                else {
+
+                    records.push(record);
+
+                }
+
+
+                // Save directly to Google Sheet
+                saveToGoogleSheet(record);
+
+
+                showToast("Leave record saved directly to Google Sheet!", "success");
+
+
+                clearForm();
+
+                displayRecords();
+
+                switchNav('records');
+
+                return;
+
+            }
+
+
+            /* -------------------------------------------------
+               SAVE REGULAR WORKING TURN RECORD
+            ------------------------------------------------- */
+
+            const turn =
+                document.getElementById(
+                    "turnNumber"
+                ).value.trim();
+
+
+            const turnInfo =
+                document.getElementById(
+                    "turnInfo"
+                ).value.trim();
+
+
+            const type =
+                document.getElementById(
+                    "turnType"
+                ).value;
+
+
+            const day1On =
+                document.getElementById(
+                    "day1On"
+                ).value;
+
+
+            const day1Off =
+                document.getElementById(
+                    "day1Off"
+                ).value;
+
+
+            const day2Date =
+                document.getElementById(
+                    "day2Date"
+                ).value;
+
+
+            const day2On =
+                document.getElementById(
+                    "day2On"
+                ).value;
+
+
+            const day2Off =
+                document.getElementById(
+                    "day2Off"
+                ).value;
+
+
+            if (!turn) {
+
+                showToast("Please enter the turn number.", "warning");
+
+                return;
+
+            }
+
+
+            const day1Minutes =
+                duration(
+                    day1On,
+                    day1Off
+                );
+
+
+            const day2Minutes =
+                duration(
+                    day2On,
+                    day2Off
+                );
+
+
+            let totalMinutes = 0;
+
+
+            if (type === "single") {
+
+                totalMinutes =
+                    day1Minutes;
+
+            }
+            else if (
+                day1On &&
+                day2Off
+            ) {
+
+                let start =
+                    toMinutes(day1On);
+
+
+                let end =
+                    toMinutes(day2Off);
+
+
+                end += 1440;
+
+
+                totalMinutes =
+                    end - start;
+
+            }
+
+
+            let complete = false;
+
+
+            if (type === "single") {
+
+                complete =
+                    !!day1On &&
+                    !!day1Off;
+
+            }
+            else {
+
+                complete =
+                    !!day1On &&
+                    !!day2Off;
+
+            }
+
+
+            const record = {
+
+                id:
+                    editingId ||
+                    Date.now(),
+
+                isLeave:
+                    false,
+
+                date:
+                    date,
+
+                driver:
+                    driver,
+
+                employeeNo:
+                    employeeNo,
+
+                turn:
+                    turn,
+
+                turnInfo:
+                    turnInfo,
+
+                type:
+                    type,
+
+                day1On:
+                    day1On,
+
+                day1Off:
+                    day1Off,
+
+                day1Minutes:
+                    day1Minutes,
+
+                day2Date:
+                    day2Date,
+
+                day2On:
+                    day2On,
+
+                day2Off:
+                    day2Off,
+
+                day2Minutes:
+                    day2Minutes,
+
+                totalMinutes:
+                    totalMinutes,
+
+                complete:
+                    complete
+
+            };
+
+
+            if (editingId) {
+
+                const index =
+                    records.findIndex(
+                        r =>
+                            r.id === editingId
+                    );
+
+
+                if (index !== -1) {
+
+                    records[index] =
+                        record;
+
+                }
+
+            }
+            else {
+
+                records.push(record);
+
+            }
+
+
+            // Save directly to Google Sheet
+            saveToGoogleSheet({
+                ...record,
+                totalHours: formatHours(record.totalMinutes)
+            });
+
+
+            showToast(
+                complete ? "Record completed & saved to Google Sheet!" : "Record saved to Google Sheet!",
+                "success"
+            );
+
+
+            clearForm();
+
+            displayRecords();
+
+            switchNav('records');
+
+        }
+
+
+        /* =====================================================
+           DISPLAY RECORDS
+        ===================================================== */
+
+        function displayRecords() {
+
+            const list =
+                document.getElementById(
+                    "recordsList"
+                );
+
+
+            const filtered =
+                records
+                    .filter(
+                        belongsToPeriod
+                    )
+                    .sort(
+                        (a, b) =>
+                            new Date(a.date) -
+                            new Date(b.date)
+                    );
+
+
+            if (filtered.length === 0) {
+
+                list.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <div style="font-weight:700; font-size:15px; color:#475569;">No records found</div>
+                <div style="font-size:13px; color:#94a3b8; margin-top:4px;">No duty turns or leave recorded for this period.</div>
+                <button class="app-btn btn-primary" style="margin-top:16px;" onclick="openNewEntryPage()">
+                    ➕ Add First Entry
+                </button>
+            </div>
+        `;
+
+                updateDashboard();
+
+                return;
+
+            }
+
+
+            list.innerHTML = "";
+
+
+            filtered.forEach(
+                record => {
+
+                    const div =
+                        document.createElement(
+                            "div"
+                        );
+
+
+                    const isLeave = !!record.isLeave;
+
+                    div.className =
+                        "record-card";
+
+
+                    let statusBadge = `<span class="badge badge-incomplete">⏳ Incomplete</span>`;
+
+                    if (isLeave) {
+                        statusBadge = `<span class="badge badge-leave">🏖️ Leave</span>`;
+                    }
+                    else if (record.complete) {
+                        statusBadge = `<span class="badge badge-complete">✓ Completed</span>`;
+                    }
+
+
+                    let html = "";
+
+
+                    html += `
+                <div class="record-header">
+                    <div class="record-date">
+                        📅 ${formatDate(record.date)}
+                    </div>
+                    ${statusBadge}
+                </div>
+            `;
+
+
+                    html += `
+                <div class="record-detail-row">
+                    <span>Driver:</span>
+                    <b>${escapeHTML(record.driver)}</b>
+                </div>
+            `;
+
+
+                    if (isLeave) {
+
+                        html += `
+                    <div class="record-detail-row">
+                        <span>Leave Type:</span>
+                        <b style="color:var(--purple-text);">${escapeHTML(record.leaveType || record.turn || "Leave")}</b>
+                    </div>
+                `;
+
+                        if (record.leaveRemarks || record.turnInfo) {
+                            html += `
+                        <div class="record-detail-row">
+                            <span>Remarks:</span>
+                            <span>${escapeHTML(record.leaveRemarks || record.turnInfo)}</span>
+                        </div>
+                    `;
+                        }
+
+                        html += `
+                    <div class="leave-pill-box" style="margin-top:4px; font-size:12px; padding:6px 10px;">
+                        🏖️ Off Duty / Leave (No Time Log Required)
+                    </div>
+                `;
+
+                    }
+                    else {
+
+                        html += `
+                    <div class="record-detail-row">
+                        <span>Turn No:</span>
+                        <b>${escapeHTML(record.turn)}</b>
+                    </div>
+                `;
+
+
+                        if (record.turnInfo) {
+                            html += `
+                        <div class="record-detail-row">
+                            <span>Turn Info:</span>
+                            <span>${escapeHTML(record.turnInfo)}</span>
+                        </div>
+                    `;
+                        }
+
+
+                        html += `
+                    <div class="record-detail-row">
+                        <span>Type:</span>
+                        <span>${record.type === "multiple" ? "Multiple Day" : "Single Day"}</span>
+                    </div>
+                `;
+
+
+                        html += `
+                    <div class="record-detail-row">
+                        <span>Day 1:</span>
+                        <b>${record.day1On || "—"} → ${record.day1Off || "—"}</b>
+                    </div>
+                `;
+
+
+                        if (record.type === "multiple") {
+                            html += `
+                        <div class="record-detail-row">
+                            <span>Day 2 (${record.day2Date ? formatDate(record.day2Date) : "—"}):</span>
+                            <b>${record.day2On || "—"} → ${record.day2Off || "—"}</b>
+                        </div>
+                    `;
+                        }
+
+
+                        html += `
+                    <div class="info-pill-box" style="margin-top:4px; font-size:12px; padding:6px 10px;">
+                        ⏱️ Total: ${formatHours(record.totalMinutes)}
+                    </div>
+                `;
+
+                    }
+
+
+                    html += `
+                <div class="record-actions">
+                    <button class="app-btn btn-edit" onclick="editRecord(${record.id})">
+                        ✏️ Edit Entry
+                    </button>
+                    <button class="app-btn btn-danger" onclick="deleteRecord(${record.id})">
+                        🗑️ Delete
+                    </button>
+                </div>
+            `;
+
+
+                    div.innerHTML =
+                        html;
+
+
+                    list.appendChild(div);
+
+                }
+            );
+
+
+            updateDashboard();
+
+        }
+
+
+        /* =====================================================
+           DASHBOARD
+        ===================================================== */
+
+        function updateDashboard() {
+
+            const filtered =
+                records.filter(
+                    belongsToPeriod
+                );
+
+
+            let completed = 0;
+
+            let incomplete = 0;
+
+            let leaveCount = 0;
+
+            let hours = 0;
+
+
+            filtered.forEach(
+                r => {
+
+                    if (r.isLeave) {
+
+                        leaveCount++;
+
+                        completed++;
+
+                    }
+                    else if (r.complete) {
+
+                        completed++;
+
+                    }
+                    else {
+
+                        incomplete++;
+
+                    }
+
+
+                    hours +=
+                        Number(
+                            r.totalMinutes || 0
+                        );
+
+                }
+            );
+
+
+            document.getElementById(
+                "totalRecords"
+            ).innerText =
+                filtered.length;
+
+
+            document.getElementById(
+                "completedRecords"
+            ).innerText =
+                completed;
+
+
+            document.getElementById(
+                "leaveDays"
+            ).innerText =
+                leaveCount;
+
+
+            const totalHoursEl =
+                document.getElementById(
+                    "totalHours"
+                );
+
+            if (totalHoursEl) {
+                totalHoursEl.innerText =
+                    formatHours(hours);
+            }
+
+        }
+
+
+        /* =====================================================
+           EDIT / CONTINUE
+        ===================================================== */
+
+        function editRecord(id) {
+
+            const record =
+                records.find(
+                    r => r.id === id
+                );
+
+
+            if (!record)
+                return;
+
+
+            editingId =
+                id;
+
+
+            document.getElementById(
+                "formTitle"
+            ).innerHTML =
+                "✏️ Edit Record";
+
+
+            document.getElementById(
+                "workDate"
+            ).value =
+                record.date;
+
+
+            document.getElementById(
+                "driverName"
+            ).value =
+                record.driver;
+
+
+            if (record.isLeave) {
+
+                setCategory("leave");
+
+
+                document.getElementById(
+                    "leaveType"
+                ).value =
+                    record.leaveType || record.turn || "Casual Leave";
+
+
+                document.getElementById(
+                    "leaveRemarks"
+                ).value =
+                    record.leaveRemarks || record.turnInfo || "";
+
+
+                document.getElementById(
+                    "leaveSelectionMode"
+                ).value =
+                    "single";
+
+                leaveSelectionModeChanged();
+
+            }
+            else {
+
+                setCategory("duty");
+
+
+                document.getElementById(
+                    "turnNumber"
+                ).value =
+                    record.turn || "";
+
+
+                document.getElementById(
+                    "turnInfo"
+                ).value =
+                    record.turnInfo || "";
+
+
+                document.getElementById(
+                    "turnType"
+                ).value =
+                    record.type || "single";
+
+
+                document.getElementById(
+                    "day1On"
+                ).value =
+                    record.day1On || "";
+
+
+                document.getElementById(
+                    "day1Off"
+                ).value =
+                    record.day1Off || "";
+
+
+                document.getElementById(
+                    "day2Date"
+                ).value =
+                    record.day2Date || "";
+
+
+                document.getElementById(
+                    "day2On"
+                ).value =
+                    record.day2On || "";
+
+
+                document.getElementById(
+                    "day2Off"
+                ).value =
+                    record.day2Off || "";
+
+
+                turnTypeChanged();
+
+                calculateHours();
+
+            }
+
+
+            switchNav('form');
+
+        }
+
+
+        /* =====================================================
+           DELETE (DELETED DIRECTLY FROM GOOGLE SHEET)
+        ===================================================== */
+
+        function deleteRecord(id) {
+
+            showConfirmDialog({
+                title: "Delete Record",
+                message: "Are you sure you want to permanently delete this record from Google Sheet?",
+                icon: "🗑️",
+                confirmText: "Delete",
+                cancelText: "Cancel",
+                isDanger: true,
+                onConfirm: () => {
+                    records = records.filter(r => r.id !== id);
+                    displayRecords();
+
+                    // Sync deletion to Google Sheet
+                    saveToGoogleSheet({
+                        action: "deleteRecord",
+                        id: id
+                    });
+
+                    showToast("Record deleted from Google Sheet.", "success");
+                }
+            });
+
+        }
+
+
+        /* =====================================================
+           CLEAR
+        ===================================================== */
+
+        function clearForm() {
+
+            editingId =
+                null;
+
+
+            document.getElementById(
+                "formTitle"
+            ).innerHTML =
+                "📝 Add New Record";
+
+
+            document.getElementById(
+                "workDate"
+            ).value =
+                "";
+
+
+            setCategory("duty");
+
+
+            document.getElementById(
+                "leaveType"
+            ).selectedIndex = 0;
+
+
+            document.getElementById(
+                "leaveSelectionMode"
+            ).value = "single";
+
+            leaveSelectionModeChanged();
+
+
+            document.getElementById(
+                "leaveEndDate"
+            ).value = "";
+
+
+            document.getElementById(
+                "leaveRemarks"
+            ).value = "";
+
+
+            document.getElementById(
+                "turnNumber"
+            ).value =
+                "";
+
+
+            document.getElementById(
+                "turnInfo"
+            ).value =
+                "";
+
+
+            document.getElementById(
+                "turnType"
+            ).value =
+                "single";
+
+
+            document.getElementById(
+                "day1On"
+            ).value =
+                "";
+
+
+            document.getElementById(
+                "day1Off"
+            ).value =
+                "";
+
+
+            document.getElementById(
+                "day2Date"
+            ).value =
+                "";
+
+
+            document.getElementById(
+                "day2On"
+            ).value =
+                "";
+
+
+            document.getElementById(
+                "day2Off"
+            ).value =
+                "";
+
+
+            document.getElementById(
+                "day2Area"
+            ).classList.add(
+                "hidden"
+            );
+
+
+            calculateHours();
+
+        }
+
+
+        /* =====================================================
+           DATE FORMAT
+        ===================================================== */
+
+        function formatDate(date) {
+
+            if (!date) return "";
+
+            const clean = cleanDate(date);
+            if (!clean) return String(date);
+
+            const parts = clean.split("-");
+            if (parts.length === 3) {
+                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+
+            return clean;
+
+        }
+
+
+        /* =====================================================
+           ESCAPE
+        ===================================================== */
+
+        function escapeHTML(text) {
+
+            return String(text || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+
+        }
+
+
+        /* =====================================================
+           EXCEL INTEGRATION (.XLSX & .CSV)
+        ===================================================== */
+
+        function buildExportRows(periodOnly) {
+
+            const dataset =
+                periodOnly
+                    ? records.filter(belongsToPeriod)
+                    : records;
+
+            const sorted =
+                [...dataset].sort(
+                    (a, b) => new Date(a.date) - new Date(b.date)
+                );
+
+            return sorted.map(r => {
+
+                const isLeave = !!r.isLeave;
+
+                return {
+                    "Date": r.date || "",
+                    "Formatted Date": formatDate(r.date),
+                    "Driver Name": r.driver || "",
+                    "Employee No": r.employeeNo || "",
+                    "Record Type": isLeave ? "Leave" : "Duty Turn",
+                    "Turn No / Leave Type": isLeave ? (r.leaveType || r.turn || "Leave") : (r.turn || ""),
+                    "Turn Info / Remarks": isLeave ? (r.leaveRemarks || r.turnInfo || "") : (r.turnInfo || ""),
+                    "Turn Type": isLeave ? "N/A" : (r.type === "multiple" ? "Multiple Day" : "Single Day"),
+                    "Day 1 On Time": isLeave ? "—" : (r.day1On || "—"),
+                    "Day 1 Off Time": isLeave ? "—" : (r.day1Off || "—"),
+                    "Day 2 Date": isLeave ? "—" : (r.day2Date ? formatDate(r.day2Date) : "—"),
+                    "Day 2 On Time": isLeave ? "—" : (r.day2On || "—"),
+                    "Day 2 Off Time": isLeave ? "—" : (r.day2Off || "—"),
+                    "Total Hours": isLeave ? "0h 0m" : formatHours(r.totalMinutes),
+                    "Total Minutes": isLeave ? 0 : (r.totalMinutes || 0),
+                    "Status": isLeave ? "LEAVE" : (r.complete ? "COMPLETED" : "INCOMPLETE")
+                };
+
+            });
+
+        }
+
+
+        function exportToExcel(periodOnly) {
+
+            const rows =
+                buildExportRows(periodOnly);
+
+
+            if (rows.length === 0) {
+
+                showToast("No records found to export.", "info");
+
+                return;
+
+            }
+
+
+            const month = getMonth();
+
+            let periodLabel = selectedPeriod;
+            if (selectedPeriod === "all") periodLabel = "Full_Month";
+
+            const fileName =
+                periodOnly
+                    ? `Engine_Driver_Records_${month}_${periodLabel}_Period.xlsx`
+                    : `Engine_Driver_Records_All_Data_${month}.xlsx`;
+
+
+            if (typeof XLSX !== "undefined") {
+
+                const ws =
+                    XLSX.utils.json_to_sheet(rows);
+
+                const wb =
+                    XLSX.utils.book_new();
+
+                XLSX.utils.book_append_sheet(
+                    wb,
+                    ws,
+                    periodOnly ? "Period Records" : "All Records"
+                );
+
+                XLSX.writeFile(wb, fileName);
+                showToast("Excel spreadsheet downloaded successfully.", "success");
+
+            }
+            else {
+
+                exportToCSV(periodOnly);
+
+            }
+
+        }
+
+
+        function exportToCSV(periodOnly) {
+
+            const rows =
+                buildExportRows(periodOnly);
+
+
+            if (rows.length === 0) {
+
+                showToast("No records found to export.", "info");
+
+                return;
+
+            }
+
+
+            const headers = Object.keys(rows[0]);
+
+            const csvLines = [
+                headers.join(",")
+            ];
+
+
+            rows.forEach(r => {
+
+                const values = headers.map(h => {
+
+                    const val = String(r[h] ?? "").replace(/"/g, '""');
+
+                    return `"${val}"`;
+
+                });
+
+                csvLines.push(values.join(","));
+
+            });
+
+
+            const csvContent =
+                "data:text/csv;charset=utf-8," +
+                encodeURIComponent(csvLines.join("\n"));
+
+            const month = getMonth();
+
+            let periodLabel = selectedPeriod;
+            if (selectedPeriod === "all") periodLabel = "Full_Month";
+
+            const fileName =
+                periodOnly
+                    ? `Engine_Driver_Records_${month}_${periodLabel}_Period.csv`
+                    : `Engine_Driver_Records_All_Data_${month}.csv`;
+
+            const downloadAnchor =
+                document.createElement("a");
+
+            downloadAnchor.setAttribute("href", csvContent);
+
+            downloadAnchor.setAttribute("download", fileName);
+
+            document.body.appendChild(downloadAnchor);
+
+            downloadAnchor.click();
+
+            downloadAnchor.remove();
+
+            showToast("CSV file exported successfully.", "success");
+
+        }
+
+
+        function importFromExcel(event) {
+
+            const file =
+                event.target.files[0];
+
+            if (!file) return;
+
+
+            const reader =
+                new FileReader();
+
+
+            reader.onload = function (e) {
+
+                try {
+
+                    const data =
+                        new Uint8Array(e.target.result);
+
+                    const workbook =
+                        XLSX.read(data, { type: 'array' });
+
+                    const firstSheetName =
+                        workbook.SheetNames[0];
+
+                    const worksheet =
+                        workbook.Sheets[firstSheetName];
+
+                    const jsonData =
+                        XLSX.utils.sheet_to_json(worksheet);
+
+
+                    if (!jsonData || jsonData.length === 0) {
+
+                        showToast("No valid data rows found in the uploaded file.", "warning");
+
+                        return;
+
+                    }
+
+
+                    let importedCount = 0;
+
+
+                    jsonData.forEach(item => {
+
+                        const isLeave =
+                            (item["Record Type"] === "Leave") ||
+                            (item["Status"] === "LEAVE") ||
+                            (String(item["Turn No / Leave Type"] || "").toLowerCase().includes("leave"));
+
+                        let rawDate = item["Date"] || item["Formatted Date"] || "";
+
+                        if (rawDate.includes("/")) {
+                            const dp = rawDate.split("/");
+                            if (dp.length === 3) {
+                                rawDate = `${dp[2]}-${dp[1].padStart(2, "0")}-${dp[0].padStart(2, "0")}`;
+                            }
+                        }
+
+                        if (!rawDate) return;
+
+
+                        const record = {
+
+                            id:
+                                Date.now() + Math.floor(Math.random() * 10000) + importedCount,
+
+                            isLeave:
+                                isLeave,
+
+                            leaveType:
+                                isLeave ? (item["Turn No / Leave Type"] || "Casual Leave") : "",
+
+                            leaveRemarks:
+                                isLeave ? (item["Turn Info / Remarks"] || "") : "",
+
+                            date:
+                                rawDate,
+
+                            driver:
+                                item["Driver Name"] || document.getElementById("driverName").value || "W.A.M. S.P. Herath",
+
+                            employeeNo:
+                                item["Employee No"] || "36835",
+
+                            turn:
+                                isLeave ? (item["Turn No / Leave Type"] || "Leave") : (item["Turn No / Leave Type"] || item["Turn No"] || ""),
+
+                            turnInfo:
+                                item["Turn Info / Remarks"] || item["Turn Information"] || "",
+
+                            type:
+                                (item["Turn Type"] === "Multiple Day" || item["Day 2 Date"]) ? "multiple" : "single",
+
+                            day1On:
+                                isLeave ? "" : (item["Day 1 On Time"] === "—" ? "" : (item["Day 1 On Time"] || "")),
+
+                            day1Off:
+                                isLeave ? "" : (item["Day 1 Off Time"] === "—" ? "" : (item["Day 1 Off Time"] || "")),
+
+                            day1Minutes:
+                                0,
+
+                            day2Date:
+                                isLeave ? "" : (item["Day 2 Date"] === "—" ? "" : (item["Day 2 Date"] || "")),
+
+                            day2On:
+                                isLeave ? "" : (item["Day 2 On Time"] === "—" ? "" : (item["Day 2 On Time"] || "")),
+
+                            day2Off:
+                                isLeave ? "" : (item["Day 2 Off Time"] === "—" ? "" : (item["Day 2 Off Time"] || "")),
+
+                            day2Minutes:
+                                0,
+
+                            totalMinutes:
+                                Number(item["Total Minutes"]) || 0,
+
+                            complete:
+                                isLeave || item["Status"] === "COMPLETED"
+
+                        };
+
+
+                        if (!isLeave) {
+
+                            record.day1Minutes =
+                                duration(record.day1On, record.day1Off);
+
+                            record.day2Minutes =
+                                duration(record.day2On, record.day2Off);
+
+                            if (!record.totalMinutes) {
+
+                                if (record.type === "single") {
+                                    record.totalMinutes = record.day1Minutes;
+                                }
+                                else if (record.day1On && record.day2Off) {
+                                    let st = toMinutes(record.day1On);
+                                    let ed = toMinutes(record.day2Off) + 1440;
+                                    record.totalMinutes = ed - st;
+                                }
+
+                            }
+
+                            record.complete =
+                                record.type === "single"
+                                    ? (!!record.day1On && !!record.day1Off)
+                                    : (!!record.day1On && !!record.day2Off);
+
+                        }
+
+
+                        records.push(record);
+
+                        importedCount++;
+
+                    });
+
+
+                    displayRecords();
+
+                    // Push imported to Google Sheet
+                    saveToGoogleSheet({
+                        action: "syncAll",
+                        records: records
+                    });
+
+                    showToast(`Successfully imported ${importedCount} records to Google Sheet.`, "success");
+
+                    switchNav('records');
+
+                }
+                catch (err) {
+
+                    showToast("Error reading Excel file: " + err.message, "danger");
+
+                }
+
+                event.target.value = "";
+
+            };
+
+
+            reader.readAsArrayBuffer(file);
+
+        }
+
+
+        /* =====================================================
+           PRINT PDF
+        ===================================================== */
+
+        function printReport() {
+
+            const month =
+                getMonth();
+
+
+            const monthDate =
+                new Date(
+                    month + "-01T00:00:00"
+                );
+
+
+            const monthName =
+                monthDate.toLocaleDateString(
+                    "en-US",
+                    {
+                        month: "long",
+                        year: "numeric"
+                    }
+                );
+
+
+            const lastDay =
+                new Date(
+                    monthDate.getFullYear(),
+                    monthDate.getMonth() + 1,
+                    0
+                ).getDate();
+
+
+            let period = "";
+
+            if (selectedPeriod === "first") {
+                period = "01-15";
+            } else if (selectedPeriod === "second") {
+                period = "16-" + lastDay;
+            } else {
+                period = "01-" + lastDay + " (Full Month)";
+            }
+
+
+            const filtered =
+                records.filter(
+                    belongsToPeriod
+                );
+
+
+            let total = 0;
+            let leaveTotal = 0;
+
+
+            filtered.forEach(
+                r => {
+                    if (r.isLeave) {
+                        leaveTotal++;
+                    }
+                    total +=
+                        Number(
+                            r.totalMinutes || 0
+                        );
+                }
+            );
+
+
+            let html = `
+
+    <html>
+
+    <head>
+
+    <title>
+        ${monthName} ${period}
+    </title>
+
+    <style>
+
+    body{
+        font-family:Arial;
+        padding:25px;
+    }
+
+    h1,
+    h2{
+        text-align:center;
+    }
+
+    .employee{
+        text-align:center;
+        margin-bottom:20px;
+    }
+
+    table{
+        width:100%;
+        border-collapse:collapse;
+    }
+
+    th,
+    td{
+        border:1px solid #000;
+        padding:7px;
+        text-align:center;
+    }
+
+    th{
+        font-weight:bold;
+    }
+
+    .total{
+        margin-top:20px;
+        font-size:18px;
+        font-weight:bold;
+    }
+
+    </style>
+
+    </head>
+
+    <body>
+
+    <h1>
+        SRI LANKA RAILWAYS
+    </h1>
+
+    <h2>
+        ENGINE DRIVER WORKING RECORD
+    </h2>
+
+    <div class="employee">
+
+        <b>
+            W.A.M. S.P. Herath
+        </b>
+
+        <br>
+
+        Employee No: 36835
+
+        <br>
+
+        Engine Driver
+
+    </div>
+
+    <h2>
+        ${monthName} — ${period}
+    </h2>
+
+    <table>
+
+    <tr>
+
+        <th>Date</th>
+
+        <th>Driver</th>
+
+        <th>Turn No / Leave</th>
+
+        <th>Turn Info / Remarks</th>
+
+        <th>Type</th>
+
+        <th>Day 1</th>
+
+        <th>Day 2</th>
+
+        <th>Total</th>
+
+    </tr>
+    `;
+
+
+            filtered.forEach(
+                r => {
+
+                    const isLeave = !!r.isLeave;
+
+                    html += `
+
+            <tr ${isLeave ? 'style="background-color:#f8fafc;"' : ''}>
+
+                <td>
+                    ${formatDate(r.date)}
+                </td>
+
+                <td>
+                    ${escapeHTML(r.driver)}
+                </td>
+
+                <td>
+                    ${escapeHTML(isLeave ? (r.leaveType || r.turn || "Leave") : r.turn)}
+                </td>
+
+                <td>
+                    ${escapeHTML(isLeave ? (r.leaveRemarks || r.turnInfo || "—") : (r.turnInfo || "—"))}
+                </td>
+
+                <td>
+                    ${isLeave
+                            ? "LEAVE"
+                            : (
+                                r.type === "multiple"
+                                    ? "Multiple"
+                                    : "Single"
+                            )
+                        }
+                </td>
+
+                <td>
+                    ${isLeave ? "—" : ((r.day1On || "—") + " - " + (r.day1Off || "—"))}
+                </td>
+
+                <td>
+                    ${isLeave
+                            ? "—"
+                            : (
+                                r.type === "multiple"
+                                    ? (
+                                        (r.day2On || "—") +
+                                        " - " +
+                                        (r.day2Off || "—")
+                                    )
+                                    : "—"
+                            )
+                        }
+                </td>
+
+                <td>
+                    ${isLeave
+                            ? "0h 0m"
+                            : formatHours(r.totalMinutes)
+                        }
+                </td>
+
+            </tr>
+
+            `;
+
+                }
+            );
+
+
+            html += `
+
+    </table>
+
+    <div class="total">
+
+        Period Total Hours: ${formatHours(total)}
+        ${leaveTotal > 0 ? ` &nbsp;|&nbsp; Total Leave Days: ${leaveTotal}` : ""}
+
+    </div>
+
+    </body>
+
+    </html>
+
+    `;
+
+
+            const win =
+                window.open(
+                    "",
+                    "_blank"
+                );
+
+
+            win.document.write(
+                html
+            );
+
+
+            win.document.close();
+
+
+            setTimeout(
+                () => {
+                    win.print();
+                },
+                500
+            );
+
+        }
+
+
+        /* =====================================================
+           START
+        ===================================================== */
+
+        monthChanged();
+        fetchRecordsFromSheet();
+
+    </script>
+
+</body>
+
+</html>
