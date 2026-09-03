@@ -680,6 +680,12 @@
             box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
         }
 
+        .btn-draft {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
+        }
+
         .btn-excel {
             background: var(--excel-gradient);
             color: white;
@@ -795,6 +801,63 @@
         .empty-state-icon {
             font-size: 36px;
             margin-bottom: 8px;
+        }
+
+        /* PAGINATION */
+        .pagination-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-light);
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .pagination-info {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .pagination-buttons {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .page-btn {
+            background: white;
+            border: 1px solid #cbd5e1;
+            color: #334155;
+            padding: 6px 11px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            line-height: 1;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+        }
+
+        .page-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
         }
 
         /* IN-APP TOAST NOTIFICATIONS & CONFIRM DIALOG */
@@ -1356,8 +1419,12 @@
                     </div>
 
                     <!-- SAVE / RESET BUTTONS -->
-                    <button class="app-btn btn-success" onclick="saveRecord()">
-                        💾 Save Record to Google Sheet
+                    <button class="app-btn btn-success" onclick="saveRecord(false)">
+                        💾 Save Completed Record
+                    </button>
+
+                    <button class="app-btn btn-draft" id="btnDraft" onclick="saveRecord(true)">
+                        📝 Save as Draft (Incomplete)
                     </button>
 
                     <button class="app-btn btn-secondary" onclick="clearForm()">
@@ -1427,6 +1494,10 @@
 
                     <div id="recordsList">
                         <!-- Dynamic Record Cards Injected Here -->
+                    </div>
+
+                    <div id="recordsPagination" class="pagination-container">
+                        <!-- Pagination Controls Injected Here -->
                     </div>
                 </div>
 
@@ -1690,7 +1761,7 @@
                     method: "POST",
                     mode: "no-cors",
                     headers: {
-                        "Content-Type": "application/json"
+                        "Content-Type": "text/plain;charset=utf-8"
                     },
                     body: JSON.stringify(recordOrPayload)
                 });
@@ -1934,6 +2005,7 @@
             });
 
 
+            recordsCurrentPage = 1;
             displayRecords();
 
         }
@@ -1962,6 +2034,7 @@
             });
 
 
+            recordsCurrentPage = 1;
             displayRecords();
 
         }
@@ -2074,6 +2147,9 @@
 
                 if (btnLeave) btnLeave.classList.add("active-leave");
 
+                const btnDraft = document.getElementById("btnDraft");
+                if (btnDraft) btnDraft.style.display = "none";
+
                 leaveSelectionModeChanged();
 
             }
@@ -2088,6 +2164,9 @@
                 if (btnDuty) btnDuty.classList.add("active");
 
                 if (btnLeave) btnLeave.classList.remove("active-leave");
+
+                const btnDraft = document.getElementById("btnDraft");
+                if (btnDraft) btnDraft.style.display = "flex";
 
                 turnTypeChanged();
 
@@ -2385,7 +2464,7 @@
            SAVE RECORD (SAVED DIRECTLY TO GOOGLE SHEET)
         ===================================================== */
 
-        function saveRecord() {
+        function saveRecord(isDraft = false) {
 
             const cat =
                 document.getElementById(
@@ -2659,7 +2738,7 @@
 
                     const index =
                         records.findIndex(
-                            r => r.id === editingId
+                            r => String(r.id) === String(editingId)
                         );
 
                     if (index !== -1) {
@@ -2816,6 +2895,11 @@
 
             }
 
+            if (!isDraft && !complete) {
+                showToast("Record is incomplete. Enter all on/off times, or click 'Save as Draft'.", "warning");
+                return;
+            }
+
 
             const record = {
 
@@ -2879,7 +2963,7 @@
                 const index =
                     records.findIndex(
                         r =>
-                            r.id === editingId
+                            String(r.id) === String(editingId)
                     );
 
 
@@ -2906,8 +2990,8 @@
 
 
             showToast(
-                complete ? "Record completed & saved to Google Sheet!" : "Record saved to Google Sheet!",
-                "success"
+                complete ? "Record completed & saved to Google Sheet!" : "Draft (Incomplete) saved to Google Sheet!",
+                complete ? "success" : "info"
             );
 
 
@@ -2921,8 +3005,20 @@
 
 
         /* =====================================================
-           DISPLAY RECORDS
+           DISPLAY RECORDS (LATEST TO OLDEST WITH PAGINATION)
         ===================================================== */
+
+        let recordsCurrentPage = 1;
+        const RECORDS_PER_PAGE = 10;
+
+        function goToRecordsPage(page) {
+            recordsCurrentPage = page;
+            displayRecords();
+            const listCard = document.getElementById("recordsListTitle");
+            if (listCard) {
+                listCard.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        }
 
         function displayRecords() {
 
@@ -2931,16 +3027,24 @@
                     "recordsList"
                 );
 
+            const paginationEl =
+                document.getElementById(
+                    "recordsPagination"
+                );
 
+
+            // Sort latest record to oldest
             const filtered =
                 records
                     .filter(
                         belongsToPeriod
                     )
                     .sort(
-                        (a, b) =>
-                            new Date(a.date) -
-                            new Date(b.date)
+                        (a, b) => {
+                            const dateDiff = new Date(b.date) - new Date(a.date);
+                            if (dateDiff !== 0) return dateDiff;
+                            return (Number(b.id) || 0) - (Number(a.id) || 0);
+                        }
                     );
 
 
@@ -2957,6 +3061,8 @@
             </div>
         `;
 
+                if (paginationEl) paginationEl.innerHTML = "";
+
                 updateDashboard();
 
                 return;
@@ -2964,10 +3070,20 @@
             }
 
 
+            // Pagination Calculations
+            const totalPages = Math.ceil(filtered.length / RECORDS_PER_PAGE) || 1;
+            if (recordsCurrentPage > totalPages) recordsCurrentPage = totalPages;
+            if (recordsCurrentPage < 1) recordsCurrentPage = 1;
+
+            const startIndex = (recordsCurrentPage - 1) * RECORDS_PER_PAGE;
+            const endIndex = Math.min(startIndex + RECORDS_PER_PAGE, filtered.length);
+            const paginatedRecords = filtered.slice(startIndex, endIndex);
+
+
             list.innerHTML = "";
 
 
-            filtered.forEach(
+            paginatedRecords.forEach(
                 record => {
 
                     const div =
@@ -3095,10 +3211,10 @@
 
                     html += `
                 <div class="record-actions">
-                    <button class="app-btn btn-edit" onclick="editRecord(${record.id})">
+                    <button class="app-btn btn-edit" onclick="editRecord('${record.id}')">
                         ✏️ Edit Entry
                     </button>
-                    <button class="app-btn btn-danger" onclick="deleteRecord(${record.id})">
+                    <button class="app-btn btn-danger" onclick="deleteRecord('${record.id}')">
                         🗑️ Delete
                     </button>
                 </div>
@@ -3113,6 +3229,39 @@
 
                 }
             );
+
+
+            // Render Pagination Controls
+            if (paginationEl) {
+                if (totalPages <= 1) {
+                    paginationEl.innerHTML = `
+                        <div class="pagination-info">Showing all ${filtered.length} records</div>
+                    `;
+                } else {
+                    let pageButtonsHtml = "";
+
+                    for (let p = 1; p <= totalPages; p++) {
+                        if (p === 1 || p === totalPages || (p >= recordsCurrentPage - 1 && p <= recordsCurrentPage + 1)) {
+                            pageButtonsHtml += `
+                                <button type="button" class="page-btn ${p === recordsCurrentPage ? 'active' : ''}" onclick="goToRecordsPage(${p})">${p}</button>
+                            `;
+                        } else if (p === recordsCurrentPage - 2 || p === recordsCurrentPage + 2) {
+                            pageButtonsHtml += `<span style="font-size:12px; color:#94a3b8; padding:0 2px;">...</span>`;
+                        }
+                    }
+
+                    paginationEl.innerHTML = `
+                        <div class="pagination-info">
+                            Showing ${startIndex + 1}–${endIndex} of ${filtered.length} records
+                        </div>
+                        <div class="pagination-buttons">
+                            <button type="button" class="page-btn" ${recordsCurrentPage === 1 ? 'disabled' : ''} onclick="goToRecordsPage(${recordsCurrentPage - 1})">◀ Prev</button>
+                            ${pageButtonsHtml}
+                            <button type="button" class="page-btn" ${recordsCurrentPage === totalPages ? 'disabled' : ''} onclick="goToRecordsPage(${recordsCurrentPage + 1})">Next ▶</button>
+                        </div>
+                    `;
+                }
+            }
 
 
             updateDashboard();
@@ -3211,7 +3360,7 @@
 
             const record =
                 records.find(
-                    r => r.id === id
+                    r => String(r.id) === String(id)
                 );
 
 
@@ -3337,6 +3486,8 @@
 
         function deleteRecord(id) {
 
+            const recordToDelete = records.find(r => String(r.id) === String(id));
+
             showConfirmDialog({
                 title: "Delete Record",
                 message: "Are you sure you want to permanently delete this record from Google Sheet?",
@@ -3344,14 +3495,16 @@
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 isDanger: true,
-                onConfirm: () => {
-                    records = records.filter(r => r.id !== id);
+                onConfirm: async () => {
+                    records = records.filter(r => String(r.id) !== String(id));
                     displayRecords();
 
                     // Sync deletion to Google Sheet
-                    saveToGoogleSheet({
+                    await saveToGoogleSheet({
                         action: "deleteRecord",
-                        id: id
+                        id: id,
+                        date: recordToDelete ? recordToDelete.date : "",
+                        turn: recordToDelete ? recordToDelete.turn : ""
                     });
 
                     showToast("Record deleted from Google Sheet.", "success");
