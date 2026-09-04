@@ -1840,12 +1840,14 @@
             const day2Minutes = duration(day2On, day2Off);
             let totalMinutes = Number(r.totalMinutes) || 0;
 
-            if (!isLeave && totalMinutes === 0) {
+            if (!isLeave) {
                 if (r.type === "multiple" && day1On && day2Off) {
                     let st = toMinutes(day1On);
                     let ed = toMinutes(day2Off) + 1440;
-                    totalMinutes = ed - st;
-                } else if (day1Minutes > 0) {
+                    totalMinutes = Math.max(0, ed - st);
+                } else if (r.type === "single" && day1Minutes > 0) {
+                    totalMinutes = day1Minutes;
+                } else if (totalMinutes === 0 && day1Minutes > 0) {
                     totalMinutes = day1Minutes;
                 }
             }
@@ -2285,7 +2287,7 @@
 
         function toMinutes(time) {
 
-            if (!time) return null;
+            if (!time || typeof time !== "string" || !time.includes(":")) return 0;
 
 
             const parts =
@@ -2293,8 +2295,8 @@
 
 
             return (
-                Number(parts[0]) * 60 +
-                Number(parts[1])
+                (Number(parts[0]) || 0) * 60 +
+                (Number(parts[1]) || 0)
             );
 
         }
@@ -2328,18 +2330,18 @@
 
         function formatHours(minutes) {
 
-            if (!minutes)
-                return "0h 0m";
+            const totalMins =
+                Math.max(0, Math.round(Number(minutes) || 0));
 
 
             const hours =
                 Math.floor(
-                    minutes / 60
+                    totalMins / 60
                 );
 
 
             const mins =
-                minutes % 60;
+                totalMins % 60;
 
 
             return hours + "h " + mins + "m";
@@ -2438,7 +2440,7 @@
 
 
                 total =
-                    end - start;
+                    Math.max(0, end - start);
 
             }
 
@@ -2931,7 +2933,7 @@
 
 
                 totalMinutes =
-                    end - start;
+                    Math.max(0, end - start);
 
             }
 
@@ -4016,17 +4018,16 @@
                             record.day2Minutes =
                                 duration(record.day2On, record.day2Off);
 
-                            if (!record.totalMinutes) {
-
-                                if (record.type === "single") {
-                                    record.totalMinutes = record.day1Minutes;
-                                }
-                                else if (record.day1On && record.day2Off) {
-                                    let st = toMinutes(record.day1On);
-                                    let ed = toMinutes(record.day2Off) + 1440;
-                                    record.totalMinutes = ed - st;
-                                }
-
+                            if (record.type === "multiple" && record.day1On && record.day2Off) {
+                                let st = toMinutes(record.day1On);
+                                let ed = toMinutes(record.day2Off) + 1440;
+                                record.totalMinutes = Math.max(0, ed - st);
+                            }
+                            else if (record.type === "single") {
+                                record.totalMinutes = record.day1Minutes;
+                            }
+                            else if (!record.totalMinutes) {
+                                record.totalMinutes = record.day1Minutes;
                             }
 
                             record.complete =
